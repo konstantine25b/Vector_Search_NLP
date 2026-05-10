@@ -41,3 +41,7 @@ From the project root this works without setting `PYTHONPATH` (the script adds t
 | Recall@100 | 0.908 |
 
 `--limit_queries N` runs a subset; `--ngram_max 2` enables bigrams (slower, larger vocabulary); `--max_features` controls the vectorizer cap.
+
+## InfoNCE (contrastive loss for dense retrieval)
+
+Training uses **InfoNCE** over a mini-batch of \(B\) **(query, relevant passage)** pairs. Let \(q_i, d_i \in \mathbb{R}^H\) be **L2-normalized** embeddings for the \(i\)-th pair (so \(q_i^\top d_j\) is cosine similarity). With temperature \(\tau > 0\), logits are \(S_{ij} = (q_i^\top d_j) / \tau\). The **query→document** term is \(\operatorname{CrossEntropy}(S,\,\texttt{labels})\) with \(\texttt{labels}[i]=i\) (each row’s positive is the diagonal; off-diagonals are in-batch negatives). Optionally **symmetric** training averages that with **document→query**: \(\operatorname{CrossEntropy}(S^{\top},\,\texttt{labels})\). Implemented in `src/infonce_loss.py` (`infonce_loss`). This does **not** use the `sentence-transformers` library.
