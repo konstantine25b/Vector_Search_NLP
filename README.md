@@ -45,3 +45,7 @@ From the project root this works without setting `PYTHONPATH` (the script adds t
 ## InfoNCE (contrastive loss for dense retrieval)
 
 Training uses **InfoNCE** over a mini-batch of \(B\) **(query, relevant passage)** pairs. Let \(q_i, d_i \in \mathbb{R}^H\) be **L2-normalized** embeddings for the \(i\)-th pair (so \(q_i^\top d_j\) is cosine similarity). With temperature \(\tau > 0\), logits are \(S_{ij} = (q_i^\top d_j) / \tau\). The **query→document** term is \(\operatorname{CrossEntropy}(S,\,\texttt{labels})\) with \(\texttt{labels}[i]=i\) (each row’s positive is the diagonal; off-diagonals are in-batch negatives). Optionally **symmetric** training averages that with **document→query**: \(\operatorname{CrossEntropy}(S^{\top},\,\texttt{labels})\). Implemented in `src/infonce_loss.py` (`infonce_loss`). This does **not** use the `sentence-transformers` library.
+
+## Margin contrastive loss (classical)
+
+**Contrastive loss** (margin-based, batch of paired query/document embeddings): let \(D_{ij} = \|q_i - d_j\|_2\) (Euclidean distance in embedding space, typically after shared encoding without forcing normalization inside the loss). **Positive** term pulls matched pairs together: \(\frac{1}{B}\sum_i D_{ii}^2\). **Negative** term pushes non-matched in-batch pairs apart: average over all \(i \neq j\) of \(\max(0,\, m - D_{ij})^2\) with margin \(m \ge 0\). Implemented in `src/contrastive_loss.py` (`contrastive_loss`). It also does **not** use `sentence-transformers`.
