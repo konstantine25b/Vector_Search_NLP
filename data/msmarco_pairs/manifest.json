@@ -1,0 +1,27 @@
+{
+  "dataset": "microsoft/ms_marco",
+  "config": "v1.1",
+  "splits": {
+    "train": {
+      "hf_split": "train",
+      "rows_with_labels": 82326,
+      "queries_without_positive": 2622,
+      "query_document_pairs": 88523,
+      "file": "data/msmarco_pairs/train.jsonl"
+    },
+    "validation": {
+      "hf_split": "validation",
+      "rows_with_labels": 10047,
+      "queries_without_positive": 341,
+      "query_document_pairs": 10783,
+      "file": "data/msmarco_pairs/validation.jsonl"
+    },
+    "test": {
+      "hf_split": "test",
+      "rows_with_labels": 9650,
+      "queries_without_positive": 305,
+      "query_document_pairs": 10448,
+      "file": "data/msmarco_pairs/test.jsonl"
+    }
+  }
+}
