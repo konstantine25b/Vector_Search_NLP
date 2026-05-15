@@ -16,7 +16,8 @@ h11==0.16.0
 hf-xet==1.5.0
 httpcore==1.0.9
 httpx==0.28.1
-huggingface_hub==1.14.0
+# transformers 4.x requires huggingface_hub>=0.24,<1.0 (datasets accepts that range too).
+huggingface_hub==0.29.3
 idna==3.13
 joblib==1.5.3
 markdown-it-py==4.2.0
@@ -44,3 +45,7 @@ typing_extensions==4.15.0
 urllib3==2.7.0
 xxhash==3.7.0
 yarl==1.23.0
+
+# Dense retrieval training / eval (dual-encoder + InfoNCE).
+torch==2.6.0
+transformers==4.48.3

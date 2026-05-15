@@ -46,6 +46,37 @@ From the project root this works without setting `PYTHONPATH` (the script adds t
 
 Training uses **InfoNCE** over a mini-batch of \(B\) **(query, relevant passage)** pairs. Let \(q_i, d_i \in \mathbb{R}^H\) be **L2-normalized** embeddings for the \(i\)-th pair (so \(q_i^\top d_j\) is cosine similarity). With temperature \(\tau > 0\), logits are \(S_{ij} = (q_i^\top d_j) / \tau\). The **query→document** term is \(\operatorname{CrossEntropy}(S,\,\texttt{labels})\) with \(\texttt{labels}[i]=i\) (each row’s positive is the diagonal; off-diagonals are in-batch negatives). Optionally **symmetric** training averages that with **document→query**: \(\operatorname{CrossEntropy}(S^{\top},\,\texttt{labels})\). Implemented in `src/infonce_loss.py` (`infonce_loss`). This does **not** use the `sentence-transformers` library.
 
+## Dense bi-encoder (shared Transformer)
+
+Queries and passages are encoded by **`src/biencoder.BiEncoder`**: Hugging Face `AutoModel`, **mean** or **[CLS]** pooling, optional linear projection head, **L2-normalized** embeddings. Training minimizes **InfoNCE** on batches of positives from `train.jsonl`; symmetric query↔document InfoNCE is **on** by default (`--symmetric-infonce`). Checkpoints (`checkpoints/` is gitignored) store weights plus tokenizer/backbone ids.
+
+```bash
+# First run downloads DistilBERT weights from Hugging Face (~250MB).
+
+# Quick sanity run (tiny subset — not a meaningful model):
+python scripts/train_dense_retriever.py --max_train_samples 512 --epochs 1 --batch_size 16
+
+# Full-ish training (still one epoch — tune epochs / LR / batch for your GPUs):
+python scripts/train_dense_retriever.py --epochs 1 --batch_size 32
+
+# Retrieval metrics aligned with TF‑IDF: same corpus union + grouped test queries
+python scripts/eval_dense_retriever.py --checkpoint checkpoints/dense_msmarco/last.pt
+```
+
+**Current run (full test queries, 9,345 queries — 1 epoch, DistilBERT, batch 32):**
+
+| Metric | TF-IDF | Dense bi-encoder |
+|--------|-------:|-----------------:|
+| MRR | 0.518 | 0.356 |
+| Recall@1 | 0.404 | 0.256 |
+| Recall@5 | 0.657 | 0.467 |
+| Recall@10 | 0.742 | 0.554 |
+| Recall@50 | 0.877 | 0.731 |
+| Recall@100 | 0.908 | 0.792 |
+
+The dense model underperforms TF-IDF after 1 epoch — expected with limited training. Longer training, larger batch size (more in-batch negatives for InfoNCE), and hard negative mining are the main levers for closing the gap.
+
+
 ## Margin contrastive loss (classical)
 
 **Contrastive loss** (margin-based, batch of paired query/document embeddings): let \(D_{ij} = \|q_i - d_j\|_2\) (Euclidean distance in embedding space, typically after shared encoding without forcing normalization inside the loss). **Positive** term pulls matched pairs together: \(\frac{1}{B}\sum_i D_{ii}^2\). **Negative** term pushes non-matched in-batch pairs apart: average over all \(i \neq j\) of \(\max(0,\, m - D_{ij})^2\) with margin \(m \ge 0\). Implemented in `src/contrastive_loss.py` (`contrastive_loss`). It also does **not** use `sentence-transformers`.
