@@ -94,22 +94,6 @@ python scripts/train_dense_retriever.py --epochs 1 --batch_size 32
 python scripts/eval_dense_retriever.py --checkpoint checkpoints/dense_msmarco/last.pt
 ```
 
-### Colab training path
-
-Dense training is better on Google Colab with a GPU. In Colab:
-
-```bash
-!git clone <YOUR_REPO_URL>
-%cd Vector_Search_NLP
-!python -m pip install -r requirements.txt
-!python scripts/train_dense_retriever.py --max_train_samples 5000 --epochs 1 --batch_size 16 --device cuda
-!python scripts/eval_dense_retriever.py --checkpoint checkpoints/dense_msmarco/last.pt --limit_queries 200 --device cuda
-!python scripts/build_book_chunks.py
-!python scripts/search_book_demo.py "byte pair encoding subword tokenization" --method dense --top_k 5 --device cuda
-```
-
-If Colab runs out of memory, reduce `--batch_size` to `8` and/or `--encode_batch_size` during evaluation/demo.
-
 **Current run (full test queries, 9,345 queries — 1 epoch, DistilBERT, batch 32):**
 
 | Metric | TF-IDF | Dense bi-encoder |
