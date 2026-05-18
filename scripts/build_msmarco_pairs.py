@@ -1,6 +1,10 @@
 import argparse
 import json
+import os
 from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[1]
+os.environ.setdefault("HF_HOME", str(_ROOT / ".cache" / "huggingface"))
 
 from datasets import load_dataset
 from tqdm import tqdm
@@ -53,7 +57,7 @@ def main() -> None:
     p.add_argument(
         "--out_dir",
         type=Path,
-        default=Path(__file__).resolve().parents[1] / "data" / "msmarco_pairs",
+        default=_ROOT / "data" / "msmarco_pairs",
     )
     p.add_argument("--max_train", type=int, default=None)
     p.add_argument("--max_validation", type=int, default=None)

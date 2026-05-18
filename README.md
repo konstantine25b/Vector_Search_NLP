@@ -1,5 +1,14 @@
 # Vector_Search_NLP
 
+## Local setup
+
+This repo expects Python 3. Use a virtual environment so dependency versions stay isolated:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
 ## Training data (MS MARCO passage ranking v1.1)
 
 The project uses **`microsoft/ms_marco` · config `v1.1`** from Hugging Face: real web-search-style **queries** and **passages** with binary relevance (`is_selected`). Each JSONL line is one **(query, document)** pair where `document` is a relevant passage.
@@ -42,6 +51,28 @@ From the project root this works without setting `PYTHONPATH` (the script adds t
 
 `--limit_queries N` runs a subset; `--ngram_max 2` enables bigrams (slower, larger vocabulary); `--max_features` controls the vectorizer cap.
 
+## Book chunk search demo
+
+The final project demo needs to retrieve 200-300 word passages from **Dan Jurafsky and James H. Martin — Speech and Language Processing**. The PDF is converted to overlapping chunks with page metadata:
+
+```bash
+.venv/bin/python scripts/build_book_chunks.py
+```
+
+Default chunking uses 240-word windows with 200-word stride and skips the front matter/table of contents. Output is written to `data/book_chunks/slp_chunks.jsonl`.
+
+Search those chunks with the TF-IDF baseline:
+
+```bash
+.venv/bin/python scripts/search_book_demo.py "what is word tokenization" --top_k 5
+```
+
+After dense training creates `checkpoints/dense_msmarco/last.pt`, the same demo can search the book with the trained bi-encoder:
+
+```bash
+.venv/bin/python scripts/search_book_demo.py "what is word tokenization" --method dense --top_k 5
+```
+
 ## InfoNCE (contrastive loss for dense retrieval)
 
 Training uses **InfoNCE** over a mini-batch of \(B\) **(query, relevant passage)** pairs. Let \(q_i, d_i \in \mathbb{R}^H\) be **L2-normalized** embeddings for the \(i\)-th pair (so \(q_i^\top d_j\) is cosine similarity). With temperature \(\tau > 0\), logits are \(S_{ij} = (q_i^\top d_j) / \tau\). The **query→document** term is \(\operatorname{CrossEntropy}(S,\,\texttt{labels})\) with \(\texttt{labels}[i]=i\) (each row’s positive is the diagonal; off-diagonals are in-batch negatives). Optionally **symmetric** training averages that with **document→query**: \(\operatorname{CrossEntropy}(S^{\top},\,\texttt{labels})\). Implemented in `src/infonce_loss.py` (`infonce_loss`). This does **not** use the `sentence-transformers` library.
@@ -62,6 +93,22 @@ python scripts/train_dense_retriever.py --epochs 1 --batch_size 32
 # Retrieval metrics aligned with TF‑IDF: same corpus union + grouped test queries
 python scripts/eval_dense_retriever.py --checkpoint checkpoints/dense_msmarco/last.pt
 ```
+
+### Colab training path
+
+Dense training is better on Google Colab with a GPU. In Colab:
+
+```bash
+!git clone <YOUR_REPO_URL>
+%cd Vector_Search_NLP
+!python -m pip install -r requirements.txt
+!python scripts/train_dense_retriever.py --max_train_samples 5000 --epochs 1 --batch_size 16 --device cuda
+!python scripts/eval_dense_retriever.py --checkpoint checkpoints/dense_msmarco/last.pt --limit_queries 200 --device cuda
+!python scripts/build_book_chunks.py
+!python scripts/search_book_demo.py "byte pair encoding subword tokenization" --method dense --top_k 5 --device cuda
+```
+
+If Colab runs out of memory, reduce `--batch_size` to `8` and/or `--encode_batch_size` during evaluation/demo.
 
 **Current run (full test queries, 9,345 queries — 1 epoch, DistilBERT, batch 32):**
 
