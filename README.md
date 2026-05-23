@@ -29,18 +29,36 @@ python scripts/run_tfidf_baseline.py
 
 From the project root this works without setting `PYTHONPATH` (the script adds the repo root to `sys.path`). Default output walks through raw samples, vectorizer stats, and one example query (tokens, sparse query weights, top‑5 hits vs gold). Use `--quiet` for metrics‑only JSON; `--limit_queries N` for a quick subset.
 
-**Current run (full test queries, 9,345 queries):**
-
-| Metric | Value |
-|--------|------:|
-| MRR | 0.518 |
-| Recall@1 | 0.404 |
-| Recall@5 | 0.657 |
-| Recall@10 | 0.742 |
-| Recall@50 | 0.877 |
-| Recall@100 | 0.908 |
-
 `--limit_queries N` runs a subset; `--ngram_max 2` enables bigrams (slower, larger vocabulary); `--max_features` controls the vectorizer cap.
+
+## Bag-of-words cosine baseline
+
+Second lexical baseline: **`sklearn.CountVectorizer`** (word counts, same `max_features` / `ngram` defaults as TF‑IDF), then **row-wise L2 normalization** so the **dot product** between a query row and each document row equals **cosine similarity** between raw BoW count vectors. Same corpus union and **same** `evaluate_ranking` protocol as TF‑IDF. Optional **`--binary`**: presence/absence BoW instead of integer counts.
+
+```bash
+python scripts/run_bow_baseline.py
+```
+
+Use `--quiet`, `--limit_queries N`, and the same tokenizer-style flags as TF‑IDF where applicable (`--max_features`, `--ngram_min`, `--ngram_max`).
+
+## Retrieval metrics comparison (test set)
+
+All methods below use the **same** setup: deduplicated passage index from train+val+test (**105,793** unique passages), evaluation on **9,345** distinct test `query_id`s, **MRR** and **Recall@k** with **best rank** among gold passages.
+
+| Metric | TF-IDF | BoW cosine | Dense bi-encoder |
+|--------|-------:|-----------:|-----------------:|
+| MRR | 0.518 | 0.197 | 0.356 |
+| Recall@1 | 0.404 | 0.135 | 0.256 |
+| Recall@5 | 0.657 | 0.257 | 0.467 |
+| Recall@10 | 0.742 | 0.320 | 0.554 |
+| Recall@50 | 0.877 | 0.464 | 0.731 |
+| Recall@100 | 0.908 | 0.528 | 0.792 |
+
+- **TF-IDF**: `python scripts/run_tfidf_baseline.py` — unigrams, `max_features=65536`, `sublinear_tf=True`.
+- **BoW cosine**: `python scripts/run_bow_baseline.py` — `CountVectorizer` + row L2 normalize (integer counts, no IDF).
+- **Dense bi-encoder**: `python scripts/eval_dense_retriever.py --checkpoint checkpoints/dense_msmarco/last.pt` — DistilBERT, **1 epoch**, batch 32, InfoNCE training.
+
+TF-IDF is the strongest lexical baseline here (IDF down-weights common terms). Raw BoW cosine is weaker but still a valid second baseline. The dense model is below TF-IDF after limited training; longer training and larger batches (more in-batch negatives) are the main levers to improve it.
 
 ## InfoNCE (contrastive loss for dense retrieval)
 
@@ -59,22 +77,11 @@ python scripts/train_dense_retriever.py --max_train_samples 512 --epochs 1 --bat
 # Full-ish training (still one epoch — tune epochs / LR / batch for your GPUs):
 python scripts/train_dense_retriever.py --epochs 1 --batch_size 32
 
-# Retrieval metrics aligned with TF‑IDF: same corpus union + grouped test queries
+# Retrieval metrics aligned with TF‑IDF / BoW: same corpus union + grouped test queries
 python scripts/eval_dense_retriever.py --checkpoint checkpoints/dense_msmarco/last.pt
 ```
 
-**Current run (full test queries, 9,345 queries — 1 epoch, DistilBERT, batch 32):**
-
-| Metric | TF-IDF | Dense bi-encoder |
-|--------|-------:|-----------------:|
-| MRR | 0.518 | 0.356 |
-| Recall@1 | 0.404 | 0.256 |
-| Recall@5 | 0.657 | 0.467 |
-| Recall@10 | 0.742 | 0.554 |
-| Recall@50 | 0.877 | 0.731 |
-| Recall@100 | 0.908 | 0.792 |
-
-The dense model underperforms TF-IDF after 1 epoch — expected with limited training. Longer training, larger batch size (more in-batch negatives for InfoNCE), and hard negative mining are the main levers for closing the gap.
+See **Retrieval metrics comparison** above for TF-IDF vs BoW vs dense numbers.
 
 
 ## Margin contrastive loss (classical)

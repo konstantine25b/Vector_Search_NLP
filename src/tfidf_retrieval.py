@@ -1,6 +1,7 @@
 import json
 from collections import defaultdict
 from pathlib import Path
+from typing import Protocol
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -26,6 +27,10 @@ def build_unique_corpus(paths: list[Path]) -> list[str]:
                 seen.add(text)
                 corpus.append(text)
     return corpus
+
+
+class RankingEngine(Protocol):
+    def gold_rank(self, query: str, gold_docs: set[str]) -> int | None: ...
 
 
 def group_queries_by_id(rows: list[dict]) -> tuple[dict, dict]:
@@ -100,7 +105,7 @@ def mean_reciprocal_rank(rank_positions: list[int | None]) -> float:
 
 
 def evaluate_ranking(
-    engine: TfidfSearchEngine,
+    engine: RankingEngine,
     gold_by_qid: dict,
     query_text: dict,
     ks: list[int],
