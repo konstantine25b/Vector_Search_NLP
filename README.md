@@ -1,5 +1,14 @@
 # Vector_Search_NLP
 
+## Local setup
+
+This repo expects Python 3. Use a virtual environment so dependency versions stay isolated:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
 ## Training data (MS MARCO passage ranking v1.1)
 
 The project uses **`microsoft/ms_marco` · config `v1.1`** from Hugging Face: real web-search-style **queries** and **passages** with binary relevance (`is_selected`). Each JSONL line is one **(query, document)** pair where `document` is a relevant passage.
@@ -59,6 +68,28 @@ All methods below use the **same** setup: deduplicated passage index from train+
 - **Dense bi-encoder**: `python scripts/eval_dense_retriever.py --checkpoint checkpoints/dense_msmarco/last.pt` — DistilBERT, **1 epoch**, batch 32, InfoNCE training.
 
 TF-IDF is the strongest lexical baseline here (IDF down-weights common terms). Raw BoW cosine is weaker but still a valid second baseline. The dense model is below TF-IDF after limited training; longer training and larger batches (more in-batch negatives) are the main levers to improve it.
+
+## Book chunk search demo
+
+The final project demo needs to retrieve 200-300 word passages from **Dan Jurafsky and James H. Martin — Speech and Language Processing**. The PDF is converted to overlapping chunks with page metadata:
+
+```bash
+.venv/bin/python scripts/build_book_chunks.py
+```
+
+Default chunking uses 240-word windows with 200-word stride and skips the front matter/table of contents. Output is written to `data/book_chunks/slp_chunks.jsonl`.
+
+Search those chunks with the TF-IDF baseline:
+
+```bash
+.venv/bin/python scripts/search_book_demo.py "what is word tokenization" --top_k 5
+```
+
+After dense training creates `checkpoints/dense_msmarco/last.pt`, the same demo can search the book with the trained bi-encoder:
+
+```bash
+.venv/bin/python scripts/search_book_demo.py "what is word tokenization" --method dense --top_k 5
+```
 
 ## InfoNCE (contrastive loss for dense retrieval)
 

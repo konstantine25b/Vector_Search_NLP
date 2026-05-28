@@ -30,6 +30,7 @@ pandas==3.0.2
 propcache==0.5.2
 pyarrow==24.0.0
 Pygments==2.20.0
+pypdf==6.4.1
 python-dateutil==2.9.0.post0
 PyYAML==6.0.3
 requests==2.33.1
