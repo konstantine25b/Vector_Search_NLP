@@ -67,7 +67,9 @@ class LSTMEncoder(nn.Module):
         lstm_out, _ = self.lstm(packed)
         unpacked, _ = nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
 
-        pooled = self._mean_pool(unpacked, attention_mask)
+        # unpacked may be shorter than attention_mask (trimmed to longest seq in batch)
+        seq_len = unpacked.size(1)
+        pooled = self._mean_pool(unpacked, attention_mask[:, :seq_len])
         projected = self.projection(pooled)
         return F.normalize(projected, p=2, dim=-1)
 
