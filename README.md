@@ -115,6 +115,25 @@ python scripts/eval_dense_retriever.py --checkpoint checkpoints/dense_msmarco/la
 See **Retrieval metrics comparison** above for TF-IDF vs BoW vs dense numbers.
 
 
+## BiLSTM bi-encoder (trained from scratch)
+
+Second dense retrieval model, implemented in **`src/lstm_encoder.LSTMEncoder`**: a bidirectional LSTM that learns embeddings from scratch without any pretrained weights. Architecture: **word-level embedding** (300-dim) → **BiLSTM** (256 hidden per direction, 512 after concat) → **mean pool** (ignoring padding) → **linear projection** (256-dim) → **L2 normalize**. Uses the same **InfoNCE** loss and in-batch negatives as the Transformer bi-encoder above.
+
+Tokenization is handled by **`src/vocab.Vocabulary`**: a simple word-level tokenizer that builds a word→ID mapping from the training corpus (`max_vocab=50,000`, `min_freq=2`). Replaces HuggingFace `AutoTokenizer` entirely — no subword splitting, just lowercase + alphanumeric split.
+
+Training runs in **`notebooks/train_lstm.ipynb`** with step-level loss logging to `training_log.jsonl` and automatic loss curve plotting via matplotlib. Checkpoints and vocabulary are saved under `checkpoints/lstm_msmarco/`.
+
+| Hyperparameter | Value |
+|---------------|-------|
+| Embedding dim | 300 |
+| LSTM hidden | 256 (×2 bidirectional) |
+| Projection dim | 256 |
+| LSTM layers | 1 |
+| Dropout | 0.1 |
+| Batch size | 128 |
+| Learning rate | 1e-3 |
+| Optimizer | AdamW |
+
 ## Margin contrastive loss (classical)
 
 **Contrastive loss** (margin-based, batch of paired query/document embeddings): let \(D_{ij} = \|q_i - d_j\|_2\) (Euclidean distance in embedding space, typically after shared encoding without forcing normalization inside the loss). **Positive** term pulls matched pairs together: \(\frac{1}{B}\sum_i D_{ii}^2\). **Negative** term pushes non-matched in-batch pairs apart: average over all \(i \neq j\) of \(\max(0,\, m - D_{ij})^2\) with margin \(m \ge 0\). Implemented in `src/contrastive_loss.py` (`contrastive_loss`). It also does **not** use `sentence-transformers`.
