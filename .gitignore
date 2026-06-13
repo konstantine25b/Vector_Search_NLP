@@ -4,7 +4,8 @@ __pycache__/
 *.py[cod]
 .DS_Store
 
-checkpoints/
+
+checkpoints/**/epoch*.pt
 
 mlruns/
 mlruns.db
